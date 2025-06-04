@@ -1,4 +1,4 @@
-﻿using Engine.Core.Di;
+﻿using GignerEngine.DiContainer;
 
 namespace Engine.Core;
 

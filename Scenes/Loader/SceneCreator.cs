@@ -1,9 +1,9 @@
 ﻿using System.Reflection;
 using Engine.Core.Behaviours;
-using Engine.Core.Di;
 using Engine.Core.Entities;
 using Engine.Core.Scenes.Loader.Info;
 using Engine.Core.Serialization;
+using GignerEngine.DiContainer;
 
 namespace Engine.Core.Scenes.Loader;
 

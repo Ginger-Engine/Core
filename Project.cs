@@ -1,11 +1,11 @@
 ﻿using System.Reflection;
 using Engine.Core.Behaviours;
-using Engine.Core.Di;
 using Engine.Core.Helper;
 using Engine.Core.Scenes;
 using Engine.Core.Scenes.Loader;
 using Engine.Core.Serialization;
 using Engine.Core.Transform;
+using GignerEngine.DiContainer;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 using ITypeResolver = Engine.Core.Serialization.ITypeResolver;

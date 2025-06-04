@@ -1,6 +1,6 @@
 ﻿using Engine.Core.Behaviours;
-using Engine.Core.Di;
 using Engine.Core.Entities;
+using GignerEngine.DiContainer;
 
 namespace Engine.Core.Scenes;
 

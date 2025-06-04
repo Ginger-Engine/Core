@@ -205,8 +205,8 @@ namespace Engine.Core.Di
                 }
                 else
                 {
-                    if (!_parameters.TryGetValue(parameterInfo.Name, out var parameter)) 
-                        throw new Exception($"Can't resolve parameter {parameterInfo.Name}.There is not registered registered.");
+                    if (!_parameters.TryGetValue(parameterInfo.Name, out var parameter))
+                        throw new Exception($"Can't resolve parameter {parameterInfo.Name}. No value was registered.");
                     args[i] = parameter;
                 }
 

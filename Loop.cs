@@ -5,8 +5,13 @@ namespace Engine.Core;
 
 public class Loop
 {
-    private static Stopwatch _stopwatch = new();
+    private static readonly Stopwatch _stopwatch = new();
     private static long _previousFrameTicks = 0;
+
+    static Loop()
+    {
+        _stopwatch.Start();
+    }
 
     public void Update(Scene scene)
     {

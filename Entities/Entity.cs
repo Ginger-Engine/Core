@@ -63,8 +63,8 @@ public class Entity
 
     private void OnComponentChanged<T>(T newValue, T oldValue) where T : IComponent
     {
-        if (_componentChangeHandlers.TryGetValue(typeof(T), out var handler) && handler is Action<T, T> typed)
-            typed.Invoke(newValue, oldValue);
+        _componentChangeHandlers.TryGetValue(typeof(T), out var handler);
+        handler?.DynamicInvoke(newValue, oldValue);
     }
 
     public IDisposable SubscribeComponentChange<T>(ChangeComponentEvent<T> action) where T: IComponent

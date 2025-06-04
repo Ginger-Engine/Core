@@ -25,10 +25,29 @@ public class TypeResolverRegistry
 
     public object? Resolve(Type type, object raw)
     {
-        if (!_resolvers.TryGetValue(type, out var resolverObj)) return default;
-        if (resolverObj is ITypeResolver resolver)
-            return resolver.Resolve(type, raw);
+        if (type.IsArray)
+        {
+            var elementType = type.GetElementType();
+            if (!_resolvers.TryGetValue(elementType, out var resolverObj)) return null;
+            if (resolverObj is not ITypeResolver resolver) return null;
+            var array = raw as List<object>;
+            if (array == null) return null;
+            
+            var result = Array.CreateInstance(elementType, array.Count);
+            for (var i = 0; i < array.Count; i++)
+            {
+                var item = resolver.Resolve(elementType, array[i]);
+                result.SetValue(item, i);
+            }
+            return result;
+        }
+        else
+        {
+            if (!_resolvers.TryGetValue(type, out var resolverObj)) return null;
+            if (resolverObj is ITypeResolver resolver)
+                return resolver.Resolve(type, raw);
 
-        return default;
+            return null;
+        }
     }
 }

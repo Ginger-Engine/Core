@@ -1,4 +1,5 @@
-﻿using Engine.Core.Behaviours;
+﻿using System.Numerics;
+using Engine.Core.Behaviours;
 using Engine.Core.Entities;
 
 namespace Engine.Core.Transform;
@@ -11,7 +12,8 @@ public class TransformUpdaterBehaviour : IEntityBehaviour
         {
             entity.AddComponent(new WorldTransformComponent());
         }
-        UpdateTransformRecursive(entity); 
+
+        UpdateTransformRecursive(entity);
         entity.SubscribeComponentChange<TransformComponent>((newValue, oldValue) =>
         {
             UpdateTransformRecursive(entity);
@@ -21,27 +23,30 @@ public class TransformUpdaterBehaviour : IEntityBehaviour
     private void UpdateTransformRecursive(Entity entity)
     {
         var parent = entity.Parent;
-
-        if (parent == null)
+        var parentPosition = new Vector2();
+        var parentScale = new Vector2();
+        var parentRotation = 0f;
+        if (parent != null)
         {
-            return;
-        }
-
-        if (!parent.TryGetComponent<WorldTransformComponent>(out var parentWorld))
-        {
-            throw new Exception();
+            if (!parent.TryGetComponent<WorldTransformComponent>(out var parentWorld))
+            {
+                throw new Exception("Parent entity has no WorldTransformComponent");
+            }
+            parentPosition = parentWorld.Position;
+            parentScale = parentWorld.Scale;
+            parentRotation = parentWorld.Rotation;
         }
 
         if (!entity.TryGetComponent<TransformComponent>(out var local))
         {
-            throw new Exception();
+            throw new Exception("Entity has no TransformComponent");
         }
 
         entity.ApplyComponent(new WorldTransformComponent
         {
-            Position = parentWorld.Position + local.Position,
-            Scale = parentWorld.Scale * local.Scale,
-            Rotation = parentWorld.Rotation + local.Rotation,
+            Position = parentPosition + local.Position,
+            Scale = parentScale * local.Scale,
+            Rotation = parentRotation + local.Rotation,
         });
 
         foreach (var child in entity.Children)

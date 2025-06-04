@@ -27,22 +27,17 @@ public class Project
     }
 
 
-    private static bool TryGetConfig(string name, out object config)
+    private static bool TryGetConfig(string name, out string yaml)
     {
         var filename = PathHelper.Normalize("resources/config/" + name + ".yaml");
         if (File.Exists(filename))
         {
-            var yaml = File.ReadAllText(filename);
+            yaml = File.ReadAllText(filename);
 
-            var deserializer = new DeserializerBuilder()
-                .WithNamingConvention(CamelCaseNamingConvention.Instance)
-                .Build();
-
-            config = deserializer.Deserialize(yaml);
             return true;
         }
 
-        config = null!;
+        yaml = null!;
         return false;
     }
 
@@ -53,10 +48,6 @@ public class Project
         foreach (var bundle in _bundles)
         {
             bundle.InstallBindings(builder);
-            if (TryGetConfig(bundle.GetType().FullName ?? throw new Exception(), out var config))
-            {
-                bundle.Configure(config);
-            }
         }
 
         InstallBindings(builder);
@@ -65,6 +56,14 @@ public class Project
         builder.Bind<DiContainer>().FromInstance(_container);
         _container.Apply(builder);
         _container.Init();
+        
+        foreach (var bundle in _bundles)
+        {
+            if (TryGetConfig(bundle.GetType().FullName ?? throw new Exception(), out var config))
+            {
+                bundle.Configure(config, _container);
+            }
+        }
         
         var loader = _container.Resolve<ISceneLoader>();
         var creator = _container.Resolve<ISceneCreator>();

@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "F6Vlgtv3sPE=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\aleks\\projects\\Engine3\\Engine3\\Engine.Core\\Engine.Core.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\aleks\\.nuget\\packages\\yamldotnet\\16.3.0\\yamldotnet.16.3.0.nupkg.sha512"
+  ],
+  "logs": []
+}

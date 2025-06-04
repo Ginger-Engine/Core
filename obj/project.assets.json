@@ -54,11 +54,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\aleks\\projects\\Engine3\\Engine3\\Engine.Core\\Engine.Core.csproj",
+      "projectUniqueName": "C:\\Users\\aleks\\projects\\Engine3\\Engine.Core\\Engine.Core.csproj",
       "projectName": "Engine.Core",
-      "projectPath": "C:\\Users\\aleks\\projects\\Engine3\\Engine3\\Engine.Core\\Engine.Core.csproj",
+      "projectPath": "C:\\Users\\aleks\\projects\\Engine3\\Engine.Core\\Engine.Core.csproj",
       "packagesPath": "C:\\Users\\aleks\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\aleks\\projects\\Engine3\\Engine3\\Engine.Core\\obj\\",
+      "outputPath": "C:\\Users\\aleks\\projects\\Engine3\\Engine.Core\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

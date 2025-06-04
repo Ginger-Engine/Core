@@ -106,7 +106,7 @@ public class Project
     public void Run()
     {
         var loop = new Loop();
-        while (loop.IsRunnig())
+        while (loop.IsRunning())
         {
             loop.Update(_state.CurrentScene);
         }

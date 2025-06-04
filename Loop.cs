@@ -23,7 +23,7 @@ public class Loop
         scene.Update(dt);
     }
 
-    public bool IsRunnig()
+    public bool IsRunning()
     {
         return true;
     }

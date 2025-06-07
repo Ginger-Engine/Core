@@ -49,8 +49,6 @@ public class Project
         {
             bundle.InstallBindings(builder);
         }
-
-        InstallBindings(builder);
         
         _container = new DiContainer();
         builder.Bind<DiContainer>().FromInstance(_container);
@@ -65,49 +63,22 @@ public class Project
             }
         }
         
-        var loader = _container.Resolve<ISceneLoader>();
-        var creator = _container.Resolve<ISceneCreator>();
+        var loader = _container.Resolve<SceneLoader>();
+        var creator = _container.Resolve<SceneCreator>();
+        var sceneManager = _container.Resolve<SceneManager>();
         var sceneInfo = loader.Load(_config.InitialScene);
         var scene = creator.Create(sceneInfo);
-        _state.CurrentScene = scene;
-    }
-
-    private void InstallBindings(DiBuilder builder)
-    {
-        builder.BindParameter("basePath", "./resources");
-        builder.Bind<ISceneLoader>().From<YamlSceneLoader>();
-        builder.Bind<TransformUpdaterBehaviour>();
-        builder.Bind<EntityBehaviourManager>();
-        builder.Bind<ISceneCreator>().From<SceneCreator>();
-        builder.Bind<TypeResolverRegistry>().AfterInit((registryObj, container) =>
-        {
-            var resolvers = container.ResolveAll(typeof(ITypeResolver<>));
-            var registry = (TypeResolverRegistry)registryObj;
-
-            foreach (var resolver in resolvers)
-            {
-                var resolverType = resolver.GetType();
-                var iface = resolverType
-                    .GetInterfaces()
-                    .FirstOrDefault(i =>
-                        i.IsGenericType &&
-                        i.GetGenericTypeDefinition() == typeof(ITypeResolver<>));
-
-                if (iface != null)
-                {
-                    var targetType = iface.GetGenericArguments()[0];
-                    registry.Register(targetType, (ITypeResolver)resolver);
-                }
-            }
-        });
+        sceneManager.SetCurrentScene(scene);
     }
 
     public void Run()
     {
+        var sceneManager = _container.Resolve<SceneManager>();
+        sceneManager.StartCurrentScene();
         var loop = new Loop();
         while (loop.IsRunning())
         {
-            loop.Update(_state.CurrentScene);
+            loop.Update(sceneManager.CurrentScene);
         }
     }
 

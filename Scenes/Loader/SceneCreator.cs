@@ -7,7 +7,7 @@ using GignerEngine.DiContainer;
 
 namespace Engine.Core.Scenes.Loader;
 
-public class SceneCreator : ISceneCreator
+public class SceneCreator
 {
     private readonly DiContainer _container;
     private readonly TypeResolverRegistry _resolvers;
@@ -26,8 +26,8 @@ public class SceneCreator : ISceneCreator
 
         foreach (var entityInfo in info.Entities)
         {
-            var entity = CreateEntity(scene, entityInfo);
-            scene.RootEntities.Add(entity);
+            var entity = CreateEntity(entityInfo);
+            scene.Entities.Add(entity);
         }
 
         foreach (var behaviourName in info.SceneBehaviours)
@@ -40,15 +40,65 @@ public class SceneCreator : ISceneCreator
             if (_container.Resolve(type) is not ISceneBehaviour behaviour)
                 throw new Exception($"Invalid scene behaviour type: {behaviourName}");
 
-            scene.RegisterBehaviour(behaviour.GetType());
+            scene.AttachBehaviour(behaviour.GetType());
+        }
+        
+        foreach (var (_, entity) in scene.Entities.All)
+        {
+            foreach (var (type, component) in entity.Components)
+            {
+                foreach (var field in type.GetFields(BindingFlags.Public | BindingFlags.Instance))
+                {
+                    var fieldType = field.FieldType;
+
+                    // Одиночная ссылка
+                    if (fieldType == typeof(Entity))
+                    {
+                        if (field.GetValue(component) is Entity stub && stub.Id != Guid.Empty)
+                        {
+                            if (scene.Entities.TryGet(stub.Id, out var realEntity))
+                                field.SetValue(component, realEntity);
+                        }
+                    }
+
+                    // Массив ссылок
+                    else if (fieldType == typeof(Entity[]))
+                    {
+                        if (field.GetValue(component) is Entity[] stubs)
+                        {
+                            var resolved = stubs
+                                .Select(stub => scene.Entities.TryGet(stub.Id, out var realEntity) ? realEntity : null)
+                                .Where(e => e != null)
+                                .ToArray();
+
+                            field.SetValue(component, resolved);
+                        }
+                    }
+
+                    // Список ссылок
+                    else if (fieldType.IsGenericType && fieldType.GetGenericTypeDefinition() == typeof(List<>)
+                                                     && fieldType.GetGenericArguments()[0] == typeof(Entity))
+                    {
+                        if (field.GetValue(component) is List<Entity> stubs)
+                        {
+                            var resolved = stubs
+                                .Select(stub => scene.Entities.TryGet(stub.Id, out var realEntity) ? realEntity : null)
+                                .Where(e => e != null)
+                                .ToList();
+
+                            field.SetValue(component, resolved);
+                        }
+                    }
+                }
+            }
         }
 
         return scene;
     }
 
-    private Entity CreateEntity(Scene scene, EntityInfo info)
+    private Entity CreateEntity(EntityInfo info)
     {
-        var entity = new Entity(scene);
+        var entity = new Entity(info.Id);
 
         foreach (var componentInfo in info.Components)
         {
@@ -81,12 +131,12 @@ public class SceneCreator : ISceneCreator
             if (_container.Resolve(type) is not IEntityBehaviour behaviour)
                 throw new Exception($"Invalid entity behaviour type: {behaviourName}");
 
-            _behaviourManager.AddBehaviour(entity, behaviour);
+            _behaviourManager.AttachBehaviour(entity, behaviour);
         }
 
         foreach (var childInfo in info.Children)
         {
-            var child = CreateEntity(scene, childInfo);
+            var child = CreateEntity(childInfo);
             entity.Children.Add(child);
         }
 

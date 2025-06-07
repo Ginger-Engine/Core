@@ -6,13 +6,16 @@ namespace Engine.Core.Transform;
 
 public class TransformUpdaterBehaviour : IEntityBehaviour
 {
-    public void OnStart(Entity entity)
+    public void OnAttach(Entity entity)
     {
         if (!entity.IsComponentExists<WorldTransformComponent>())
         {
             entity.AddComponent(new WorldTransformComponent());
         }
+    }
 
+    public void OnStart(Entity entity)
+    {
         UpdateTransformRecursive(entity);
         entity.SubscribeComponentChange<TransformComponent>((newValue, oldValue) =>
         {
@@ -24,7 +27,7 @@ public class TransformUpdaterBehaviour : IEntityBehaviour
     {
         var parent = entity.Parent;
         var parentPosition = new Vector2();
-        var parentScale = new Vector2();
+        var parentScale = new Vector2(1, 1);
         var parentRotation = 0f;
         if (parent != null)
         {

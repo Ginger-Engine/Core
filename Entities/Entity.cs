@@ -1,24 +1,17 @@
-﻿using Engine.Core.Behaviours;
-using Engine.Core.Scenes;
+﻿namespace Engine.Core.Entities;
 
-namespace Engine.Core.Entities;
-
-public class Entity
+public class Entity(Guid id)
 {
-    public readonly Scene Scene;
+    public readonly Guid Id = id;
     public Entity? Parent;
     public List<Entity> Children = new();
     public bool IsEnabled = true;
 
-    private readonly Dictionary<Type, object> _components = new();
+    public IReadOnlyDictionary<Type, IComponent> Components => _components;
+    private readonly Dictionary<Type, IComponent> _components = new();
     private readonly Dictionary<Type, Delegate> _componentChangeHandlers = new();
     
     public delegate void ChangeComponentEvent<T>(T newValue, T oldValue);
-
-    public Entity(Scene scene)
-    {
-        Scene = scene;
-    }
 
     public T GetComponent<T>() where T : IComponent
         => (T)_components[typeof(T)];

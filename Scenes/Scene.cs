@@ -6,9 +6,9 @@ namespace Engine.Core.Scenes;
 
 public class Scene
 {
-    public List<Entity> RootEntities = new();
+    public EntityCollection Entities = new();
+    public IReadOnlyDictionary<Type, ISceneBehaviour> SceneBehaviours => _sceneBehaviours;
     private readonly Dictionary<Type, ISceneBehaviour> _sceneBehaviours = new();
-    private readonly Dictionary<Type, IEntityBehaviour> _entityBehaviours = new();
     private readonly EntityBehaviourManager _behaviourManager;
     private readonly DiContainer _di;
 
@@ -18,18 +18,29 @@ public class Scene
         _behaviourManager = _di.Resolve<EntityBehaviourManager>();
     }
     
-    public void RegisterBehaviour(Type behaviourType)
+    public void AttachBehaviour(Type behaviourType)
     {
         var behaviour = _di.Resolve(behaviourType);
 
-        if (behaviour is ISceneBehaviour sb && !_sceneBehaviours.ContainsKey(behaviourType))
+        if (behaviour is ISceneBehaviour sb)
         {
             _sceneBehaviours.Add(behaviourType, sb);
-            sb.OnStart();
+            return;
         }
-        else if (behaviour is IEntityBehaviour eb && !_entityBehaviours.ContainsKey(behaviourType))
+        
+        throw new Exception($"Invalid behaviour type: {behaviourType}");
+    }
+
+    public void Start()
+    {
+        foreach (var (_, behaviour) in _sceneBehaviours)
         {
-            _entityBehaviours.Add(behaviourType, eb);
+            behaviour.OnStart();
+        }
+
+        foreach (var (key, entity) in Entities.All)
+        {
+            _behaviourManager.Start(entity);
         }
     }
 
@@ -37,7 +48,7 @@ public class Scene
     {
         foreach (var sb in _sceneBehaviours.Values)
             sb.OnUpdate(dt);
-        UpdateEntities(RootEntities, dt);
+        UpdateEntities(Entities.RootEntities, dt);
     }
 
     private void UpdateEntities(IEnumerable<Entity> entities, float dt)

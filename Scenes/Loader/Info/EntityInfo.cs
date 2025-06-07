@@ -8,4 +8,5 @@ public record struct EntityInfo()
     public List<string> Behaviours = [];
     public List<EntityInfo> Children = [];
     public bool IsEnabled = false;
+    public Guid Id = Guid.Empty;
 }

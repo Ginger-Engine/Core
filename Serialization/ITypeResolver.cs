@@ -6,5 +6,8 @@ public interface ITypeResolver
 }
 public interface ITypeResolver<out T> : ITypeResolver
 {
-    T? Resolve(object raw);
+    T? Resolve(object raw)
+    {
+        return (T?)Resolve(typeof(T), raw);
+    }
 }

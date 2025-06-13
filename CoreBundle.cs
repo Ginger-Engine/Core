@@ -5,6 +5,7 @@ using Engine.Core.Scenes;
 using Engine.Core.Scenes.Loader;
 using Engine.Core.Serialization;
 using Engine.Core.Serialization.Resolvers;
+using Engine.Core.Stages;
 using Engine.Core.Transform;
 using GignerEngine.DiContainer;
 
@@ -15,11 +16,8 @@ public class CoreBundle : IBundle
     public void InstallBindings(DiBuilder builder)
     {
         builder.BindParameter("basePath", "./resources");
-        builder.Bind<SceneLoader>();
-        builder.Bind<TransformUpdaterBehaviour>();
         builder.Bind<EntityBehaviourManager>();
         builder.Bind<SceneManager>();
-        builder.Bind<SceneCreator>();
         builder.Bind<ITypeResolver<Entity>>().From<EntityTypeResolver>();
         builder.Bind<ITypeResolver<Vector2>>().From<Vector2TypeResolver>();
         builder.Bind<TypeResolverRegistry>().AfterInit((registryObj, container) =>
@@ -43,5 +41,6 @@ public class CoreBundle : IBundle
                 }
             }
         });
+        builder.Bind<LogicStage>();
     }
 }

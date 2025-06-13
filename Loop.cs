@@ -1,26 +1,29 @@
 ﻿using System.Diagnostics;
-using Engine.Core.Scenes;
+using Engine.Core.Stages;
 
 namespace Engine.Core;
 
 public class Loop
 {
-    private static readonly Stopwatch _stopwatch = new();
-    private static long _previousFrameTicks = 0;
+    private readonly StageRunner _runner;
+    private readonly Stopwatch _stopwatch = new();
+    private long _previousFrameTicks = 0;
 
-    static Loop()
+    public Loop(StageRunner runner)
     {
+        _runner = runner;
         _stopwatch.Start();
+        _runner.Start();
     }
 
-    public void Update(Scene scene)
+    public void Update()
     {
-        long currentFrameTicks = _stopwatch.ElapsedTicks;
-        long deltaTicks = currentFrameTicks - _previousFrameTicks;
+        var currentFrameTicks = _stopwatch.ElapsedTicks;
+        var deltaTicks = currentFrameTicks - _previousFrameTicks;
         _previousFrameTicks = currentFrameTicks;
                 
         float dt = (float)deltaTicks / Stopwatch.Frequency;
-        scene.Update(dt);
+        _runner.Update(dt);
     }
 
     public bool IsRunning()

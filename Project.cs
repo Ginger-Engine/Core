@@ -75,10 +75,10 @@ public class Project
     {
         var sceneManager = _container.Resolve<SceneManager>();
         sceneManager.StartCurrentScene();
-        var loop = new Loop();
+        var loop = _container.Resolve<Loop>();
         while (loop.IsRunning())
         {
-            loop.Update(sceneManager.CurrentScene);
+            loop.Update();
         }
     }
 

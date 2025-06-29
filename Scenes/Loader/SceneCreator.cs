@@ -51,7 +51,6 @@ public class SceneCreator
                 {
                     var fieldType = field.FieldType;
 
-                    // Одиночная ссылка
                     if (fieldType == typeof(Entity))
                     {
                         if (field.GetValue(component) is Entity stub && stub.Id != Guid.Empty)
@@ -61,7 +60,6 @@ public class SceneCreator
                         }
                     }
 
-                    // Массив ссылок
                     else if (fieldType == typeof(Entity[]))
                     {
                         if (field.GetValue(component) is Entity[] stubs)
@@ -75,7 +73,6 @@ public class SceneCreator
                         }
                     }
 
-                    // Список ссылок
                     else if (fieldType.IsGenericType && fieldType.GetGenericTypeDefinition() == typeof(List<>)
                                                      && fieldType.GetGenericArguments()[0] == typeof(Entity))
                     {

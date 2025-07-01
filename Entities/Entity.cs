@@ -1,10 +1,11 @@
 ﻿namespace Engine.Core.Entities;
 
-public class Entity(Guid id)
+public class Entity(Guid id = default)
 {
-    public readonly Guid Id = id;
+    public readonly Guid Id = id == Guid.Empty ? Guid.NewGuid() : id;
+    public required string Name;
     public Entity? Parent;
-    public List<Entity> Children = new();
+    public List<Entity> Children = [];
     public bool IsEnabled = true;
 
     public IReadOnlyDictionary<Type, IComponent> Components => _components;

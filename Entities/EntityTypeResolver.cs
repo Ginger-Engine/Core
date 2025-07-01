@@ -13,6 +13,6 @@ public class EntityTypeResolver : ITypeResolver<Entity>
     {
         var value = (string)raw;
         var guid = Guid.Parse(value);
-        return new Entity(guid);
+        return new Entity(guid) { Name = string.Empty };
     }
 }

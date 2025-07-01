@@ -13,6 +13,7 @@ public class LogicStage(SceneManager sceneManager) : IStage
 
     public void Update(float dt)
     {
+        sceneManager.ProcessAddEntitiesQueue();
         sceneManager.UpdateCurrentScene(dt);
     }
 }

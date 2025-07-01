@@ -2,6 +2,6 @@
 
 public record struct SceneInfo()
 {
-    public List<string> SceneBehaviours = [];
+    public List<string> Behaviours = [];
     public List<EntityInfo> Entities = [];
 }

@@ -28,9 +28,13 @@ public class SceneCreator
         {
             var entity = CreateEntity(entityInfo);
             scene.Entities.Add(entity);
+            foreach (var child in entity.Children)
+            {
+                scene.Entities.Add(child);
+            }
         }
 
-        foreach (var behaviourName in info.SceneBehaviours)
+        foreach (var behaviourName in info.Behaviours ?? [])
         {
             var type = Type.GetType(behaviourName) ?? AppDomain.CurrentDomain.GetAssemblies()
                     .SelectMany(a => a.GetTypes())
@@ -95,7 +99,10 @@ public class SceneCreator
 
     private Entity CreateEntity(EntityInfo info)
     {
-        var entity = new Entity(info.Id);
+        var entity = new Entity(info.Id)
+        {
+            Name = info.Name,
+        };
 
         foreach (var componentInfo in info.Components)
         {
@@ -134,6 +141,7 @@ public class SceneCreator
         foreach (var childInfo in info.Children)
         {
             var child = CreateEntity(childInfo);
+            child.Parent = entity;
             entity.Children.Add(child);
         }
 

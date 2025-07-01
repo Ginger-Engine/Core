@@ -1,10 +1,23 @@
 ﻿using Engine.Core.Entities;
+using GignerEngine.DiContainer;
 
 namespace Engine.Core.Behaviours;
 
-public class EntityBehaviourManager()
+public class EntityBehaviourManager(DiContainer container)
 {
     private readonly Dictionary<Entity, List<IEntityBehaviour>> _behaviours = new();
+    
+    private readonly Dictionary<Type, IEntityBehaviour> _behavioursCache = new();
+
+    private IEntityBehaviour FindBehaviour(Type behaviourType)
+    {
+        if (!_behavioursCache.TryGetValue(behaviourType, out var behaviour))
+        {
+            behaviour = container.Resolve(behaviourType) as IEntityBehaviour;
+            _behavioursCache.Add(behaviourType, behaviour);
+        }
+        return behaviour;
+    }
 
     public void AttachBehaviour(Entity entity, IEntityBehaviour behaviour)
     {
@@ -13,6 +26,11 @@ public class EntityBehaviourManager()
 
         list.Add(behaviour);
         behaviour.OnAttach(entity);
+    }
+
+    public void AttachBehaviour(Entity entity, Type behaviourType)
+    {
+        AttachBehaviour(entity, FindBehaviour(behaviourType));
     }
 
     public IReadOnlyList<IEntityBehaviour> GetBehaviours(Entity entity)
@@ -25,7 +43,9 @@ public class EntityBehaviourManager()
         if (_behaviours.TryGetValue(entity, out var list))
         {
             foreach (var behaviour in list)
+            {
                 behaviour.OnStart(entity);
+            }
         }
     }
 

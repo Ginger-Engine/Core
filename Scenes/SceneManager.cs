@@ -1,10 +1,12 @@
-﻿using Engine.Core.Behaviours;
+﻿using System.Collections;
+using Engine.Core.Behaviours;
 using Engine.Core.Entities;
 
 namespace Engine.Core.Scenes;
 
 public class SceneManager(EntityBehaviourManager behaviourManager)
 {
+    private Queue<Entity> _entitiesToAdd = [];
     public Scene? CurrentScene => _currentScene;
     private Scene? _currentScene;
 
@@ -22,26 +24,31 @@ public class SceneManager(EntityBehaviourManager behaviourManager)
         
         UpdateEntities(_currentScene.Entities.All.Values, dt);
     }
+
+    public void AddEntityToCurrentScene(Entity entity)
+    {
+        _entitiesToAdd.Enqueue(entity);
+    }
     
     private void UpdateEntities(IEnumerable<Entity> entities, float dt)
     {
         foreach (var entity in entities)
             if (entity.IsEnabled)
-                UpdateEntity(entity, dt);
-    }
-    
-    private void UpdateEntity(Entity entity, float dt)
-    {
-        behaviourManager.Update(entity, dt);
-
-        if (entity.Children.Count > 0)
-        {
-            UpdateEntities(entity.Children, dt);
-        }
+                behaviourManager.Update(entity, dt);
     }
 
     public void StartCurrentScene()
     {
         _currentScene.Start();
+    }
+
+    public void ProcessAddEntitiesQueue()
+    {
+        while (_entitiesToAdd.Count > 0)
+        {
+            var entity = _entitiesToAdd.Dequeue();
+            _currentScene.Entities.Add(entity);
+            behaviourManager.Start(entity);
+        }
     }
 }

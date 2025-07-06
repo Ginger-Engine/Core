@@ -2,6 +2,7 @@
 
 public class Entity(Guid id = default)
 {
+    private readonly Dictionary<Type, Action> _pendingNotifications = new();
     public readonly Guid Id = id == Guid.Empty ? Guid.NewGuid() : id;
     public required string Name;
     public Entity? Parent;
@@ -48,11 +49,12 @@ public class Entity(Guid id = default)
 
     public void ApplyComponent<T>(T component) where T : struct, IComponent
     {
-        if (_components.TryGetValue(typeof(T), out var old))
-        {
-            _components[typeof(T)] = component;
-            OnComponentChanged(component, (T)old);
-        }
+        var componentType = typeof(T);
+        if (!_components.TryGetValue(componentType, out var old))
+            throw new InvalidOperationException($"Component {componentType.Name} not found before applying");
+        _components[componentType] = component;
+        if (!_pendingNotifications.ContainsKey(componentType))
+            _pendingNotifications.Add(componentType, () => OnComponentChanged(component, (T)old));
     }
 
     private void OnComponentChanged<T>(T newValue, T oldValue) where T : IComponent
@@ -82,17 +84,26 @@ public class Entity(Guid id = default)
     public void RemoveComponentChangeHandler<T>(ChangeComponentEvent<T> handler) where T: IComponent
     {
         var type = typeof(T);
-        if (_componentChangeHandlers.TryGetValue(type, out var existingDelegate))
+        if (!_componentChangeHandlers.TryGetValue(type, out var existingDelegate)) return;
+        
+        var newDelegate = Delegate.Remove(existingDelegate, handler);
+        if (newDelegate == null)
         {
-            var newDelegate = Delegate.Remove(existingDelegate, handler);
-            if (newDelegate == null)
-            {
-                _componentChangeHandlers.Remove(type);
-            }
-            else
-            {
-                _componentChangeHandlers[type] = newDelegate;
-            }
+            _componentChangeHandlers.Remove(type);
+        }
+        else
+        {
+            _componentChangeHandlers[type] = newDelegate;
+        }
+    }
+
+    public void FlushPendingNotifications()
+    {
+        var pendingNotifications = new Dictionary<Type, Action>(_pendingNotifications);
+        _pendingNotifications.Clear();
+        foreach (var (_, value) in pendingNotifications)
+        {
+            value();
         }
     }
 }

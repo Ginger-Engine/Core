@@ -51,4 +51,12 @@ public class SceneManager(EntityBehaviourManager behaviourManager)
             behaviourManager.Start(entity);
         }
     }
+
+    public void FlushPendingComponentChanges()
+    {
+        foreach (var entity in _currentScene?.Entities.All.Values ?? [])
+        {
+            entity.FlushPendingNotifications();
+        }
+    }
 }

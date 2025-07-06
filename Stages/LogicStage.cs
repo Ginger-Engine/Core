@@ -15,5 +15,6 @@ public class LogicStage(SceneManager sceneManager) : IStage
     {
         sceneManager.ProcessAddEntitiesQueue();
         sceneManager.UpdateCurrentScene(dt);
+        sceneManager.FlushPendingComponentChanges();
     }
 }

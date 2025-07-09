@@ -1,14 +1,10 @@
 ﻿using System.Reflection;
-using Engine.Core.Behaviours;
 using Engine.Core.Helper;
 using Engine.Core.Scenes;
 using Engine.Core.Scenes.Loader;
-using Engine.Core.Serialization;
-using Engine.Core.Transform;
 using GignerEngine.DiContainer;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
-using ITypeResolver = Engine.Core.Serialization.ITypeResolver;
 
 namespace Engine.Core;
 
@@ -102,9 +98,7 @@ public class Project
         var assemblyNames = config.Bundles
             .Select(bundleName =>
             {
-                // Предположим, что bundleName — это полное имя типа
                 var nameParts = bundleName.Split('.');
-                // Возьми всё кроме последнего — это имя пространства
                 var ns = string.Join(".", nameParts.Take(nameParts.Length - 1));
                 return ns;
             })

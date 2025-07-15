@@ -1,4 +1,6 @@
-﻿namespace Engine.Core.Entities;
+﻿using Engine.Core.Transform;
+
+namespace Engine.Core.Entities;
 
 public class Entity(Guid id = default)
 {
@@ -55,6 +57,14 @@ public class Entity(Guid id = default)
         _components[componentType] = component;
         if (!_pendingNotifications.ContainsKey(componentType))
             _pendingNotifications.Add(componentType, () => OnComponentChanged(component, (T)old));
+    }
+    
+    public void ApplyComponentSilently<T>(T component) where T : struct, IComponent
+    {
+        var componentType = typeof(T);
+        if (!_components.TryGetValue(componentType, out var old))
+            throw new InvalidOperationException($"Component {componentType.Name} not found before applying");
+        _components[componentType] = component;
     }
 
     private void OnComponentChanged<T>(T newValue, T oldValue) where T : IComponent

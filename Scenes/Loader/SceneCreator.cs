@@ -12,87 +12,26 @@ public class SceneCreator
     private readonly DiContainer _container;
     private readonly TypeResolverRegistry _resolvers;
     private readonly EntityBehaviourManager _behaviourManager;
+    private readonly SceneLoader _sceneLoader;
 
-    public SceneCreator(DiContainer container, TypeResolverRegistry resolvers, EntityBehaviourManager behaviourManager)
+    public SceneCreator(
+        DiContainer container,
+        TypeResolverRegistry resolvers,
+        EntityBehaviourManager behaviourManager,
+        SceneLoader sceneLoader)
     {
         _container = container;
         _resolvers = resolvers;
         _behaviourManager = behaviourManager;
+        _sceneLoader = sceneLoader;
     }
 
-    public Scene Create(SceneInfo info)
+    public Scene Create(EntityInfo sceneInfo)
     {
-        var scene = new Scene(_container);
+        var scene = new Scene(_behaviourManager);
 
-        foreach (var entityInfo in info.Entities)
-        {
-            var entity = CreateEntity(entityInfo);
-            scene.Entities.Add(entity);
-            foreach (var child in entity.Children)
-            {
-                scene.Entities.Add(child);
-            }
-        }
-
-        foreach (var behaviourName in info.Behaviours ?? [])
-        {
-            var type = Type.GetType(behaviourName) ?? AppDomain.CurrentDomain.GetAssemblies()
-                    .SelectMany(a => a.GetTypes())
-                    .FirstOrDefault(t => t.FullName == (string?)behaviourName || t.Name == (string?)behaviourName)
-                ?? throw new Exception($"Unknown scene behaviour type: {behaviourName}");
-
-            if (_container.Resolve(type) is not ISceneBehaviour behaviour)
-                throw new Exception($"Invalid scene behaviour type: {behaviourName}");
-
-            scene.AttachBehaviour(behaviour.GetType());
-        }
-        
-        foreach (var (_, entity) in scene.Entities.All)
-        {
-            foreach (var (type, component) in entity.Components)
-            {
-                foreach (var field in type.GetFields(BindingFlags.Public | BindingFlags.Instance))
-                {
-                    var fieldType = field.FieldType;
-
-                    if (fieldType == typeof(Entity))
-                    {
-                        if (field.GetValue(component) is Entity stub && stub.Id != Guid.Empty)
-                        {
-                            if (scene.Entities.TryGet(stub.Id, out var realEntity))
-                                field.SetValue(component, realEntity);
-                        }
-                    }
-
-                    else if (fieldType == typeof(Entity[]))
-                    {
-                        if (field.GetValue(component) is Entity[] stubs)
-                        {
-                            var resolved = stubs
-                                .Select(stub => scene.Entities.TryGet(stub.Id, out var realEntity) ? realEntity : null)
-                                .Where(e => e != null)
-                                .ToArray();
-
-                            field.SetValue(component, resolved);
-                        }
-                    }
-
-                    else if (fieldType.IsGenericType && fieldType.GetGenericTypeDefinition() == typeof(List<>)
-                                                     && fieldType.GetGenericArguments()[0] == typeof(Entity))
-                    {
-                        if (field.GetValue(component) is List<Entity> stubs)
-                        {
-                            var resolved = stubs
-                                .Select(stub => scene.Entities.TryGet(stub.Id, out var realEntity) ? realEntity : null)
-                                .Where(e => e != null)
-                                .ToList();
-
-                            field.SetValue(component, resolved);
-                        }
-                    }
-                }
-            }
-        }
+        var rootEntity = CreateEntity(sceneInfo);
+        scene.Entities.Add(rootEntity);
 
         return scene;
     }
@@ -101,23 +40,17 @@ public class SceneCreator
     {
         var entity = new Entity(info.Id)
         {
-            Name = info.Name,
+            Name = info.Name
         };
 
         foreach (var componentInfo in info.Components)
         {
-            var type = Type.GetType(componentInfo.Type) ?? AppDomain.CurrentDomain.GetAssemblies()
-                    .SelectMany(a => a.GetTypes())
-                    .FirstOrDefault(t => t.FullName == (string?)componentInfo.Type || t.Name == (string?)componentInfo.Type)
-                ?? throw new Exception($"Unknown component type: {componentInfo.Type}");
-
-            var instance = Activator.CreateInstance(type)
-                           ?? throw new Exception($"Cannot create component: {componentInfo.Type}");
+            var type = ResolveType(componentInfo.Type);
+            var instance = Activator.CreateInstance(type)!;
 
             foreach (var field in type.GetFields(BindingFlags.Public | BindingFlags.Instance))
             {
                 if (!componentInfo.Parameters.TryGetValue(field.Name, out var raw)) continue;
-
                 var value = _resolvers.Resolve(field.FieldType, raw);
                 field.SetValue(instance, value);
             }
@@ -125,16 +58,11 @@ public class SceneCreator
             entity.AddComponent((dynamic)instance);
         }
 
-        foreach (var behaviourName in info.Behaviours)
+        foreach (var behaviourName in info.Behaviours ?? [])
         {
-            var type = Type.GetType(behaviourName) ?? AppDomain.CurrentDomain.GetAssemblies()
-                    .SelectMany(a => a.GetTypes())
-                    .FirstOrDefault(t => t.FullName == (string?)behaviourName || t.Name == (string?)behaviourName)
-                ?? throw new Exception($"Unknown behaviour type: {behaviourName}");
-
-            if (_container.Resolve(type) is not IEntityBehaviour behaviour)
-                throw new Exception($"Invalid entity behaviour type: {behaviourName}");
-
+            var type = ResolveType(behaviourName);
+            var behaviour = _container.Resolve(type) as IEntityBehaviour
+                            ?? throw new Exception($"Invalid entity behaviour: {behaviourName}");
             _behaviourManager.AttachBehaviour(entity, behaviour);
         }
 
@@ -146,5 +74,14 @@ public class SceneCreator
         }
 
         return entity;
+    }
+
+    private Type ResolveType(string typeName)
+    {
+        return Type.GetType(typeName)
+               ?? AppDomain.CurrentDomain.GetAssemblies()
+                   .SelectMany(a => a.GetTypes())
+                   .FirstOrDefault(t => t.FullName == typeName || t.Name == typeName)
+               ?? throw new Exception($"Unknown type: {typeName}");
     }
 }

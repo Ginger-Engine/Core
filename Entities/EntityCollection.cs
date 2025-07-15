@@ -3,23 +3,18 @@
 public class EntityCollection
 {
     private readonly Dictionary<Guid, Entity> _entities = new();
-    private readonly List<Entity> _rootEntities = new();
-
-    public IReadOnlyList<Entity> RootEntities => _rootEntities;
     public IReadOnlyDictionary<Guid, Entity> All => _entities;
 
-    public void Add(Entity entity, Guid? parentGuid = null)
+    public void Add(Entity entity)
     {
         if (!_entities.TryAdd(entity.Id, entity))
             throw new Exception($"Entity with id {entity.Id} already exists");
 
-        if (parentGuid != null && _entities.TryGetValue(parentGuid.Value, out var parent))
+        var children = entity.Children.ToArray();
+        foreach (var entityChild in children)
         {
-            parent.Children.Add(entity);
-        }
-        else
-        {
-            _rootEntities.Add(entity);
+            Add(entityChild);
+            entity.Children.Add(entityChild);
         }
     }
 
@@ -28,13 +23,6 @@ public class EntityCollection
     public void Remove(Guid id)
     {
         if (!_entities.TryGetValue(id, out var entity)) return;
-
-        if (!_rootEntities.Remove(entity))
-        {
-            foreach (var e in _entities.Values)
-                e.Children.Remove(entity);
-        }
-
         RemoveRecursive(entity);
     }
 
@@ -50,7 +38,6 @@ public class EntityCollection
 
     public void Clear()
     {
-        _rootEntities.Clear();
         _entities.Clear();
     }
 }

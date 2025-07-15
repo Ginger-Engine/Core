@@ -17,40 +17,45 @@ public class TransformUpdaterBehaviour : IEntityBehaviour
     public void OnStart(Entity entity)
     {
         UpdateWorldTransformRecursive(entity);
-        entity.SubscribeComponentChange<TransformComponent>((newValue, oldValue) =>
+        entity.SubscribeComponentChange<TransformComponent>((newValue, _) =>
         {
-            UpdateWorldTransformRecursive(entity);
+            UpdateWorldTransformRecursive(entity, newValue);
         });
-        entity.SubscribeComponentChange<WorldTransformComponent>((newValue, oldValue) =>
+        entity.SubscribeComponentChange<WorldTransformComponent>((newValue, _) =>
         {
-            UpdateTransformRecursive(entity);
+            UpdateTransformRecursive(entity, newValue);
         });
     }
     
-    private void UpdateTransformRecursive(Entity entity)
+    private void UpdateTransformRecursive(Entity entity, WorldTransformComponent? world = null)
     {
         var parent = entity.Parent;
         if (parent == null)
             return;
 
-        if (!entity.TryGetComponent<TransformComponent>(out var local))
-            return;
-
         if (!parent.TryGetComponent<WorldTransformComponent>(out var parentWorld))
             throw new Exception("Parent entity has no WorldTransformComponent");
-
-        if (!entity.TryGetComponent<WorldTransformComponent>(out var world))
-            throw new Exception("Entity has no WorldTransformComponent");
-
+        
+        WorldTransformComponent worldTransform;
+        if (world == null)
+        {
+            if (!entity.TryGetComponent(out worldTransform))
+                throw new Exception("Entity has no TransformComponent");
+        }
+        else
+        {
+            worldTransform = world.Value;
+        }
+        
         // Вычисляем локальную позицию на основе world и родителя
-        var newLocalPosition = world.Position - parentWorld.Position;
+        var newLocalPosition = worldTransform.Position - parentWorld.Position;
         var newLocalScale = new Vector2(
-            world.Scale.X / parentWorld.Scale.X,
-            world.Scale.Y / parentWorld.Scale.Y
+            worldTransform.Scale.X / parentWorld.Scale.X,
+            worldTransform.Scale.Y / parentWorld.Scale.Y
         );
-        var newLocalRotation = world.Rotation - parentWorld.Rotation;
+        var newLocalRotation = worldTransform.Rotation - parentWorld.Rotation;
 
-        entity.ApplyComponent(new TransformComponent
+        entity.ApplyComponentSilently(new TransformComponent
         {
             Position = newLocalPosition,
             Scale = newLocalScale,
@@ -61,7 +66,7 @@ public class TransformUpdaterBehaviour : IEntityBehaviour
             UpdateTransformRecursive(child);
     }
 
-    private void UpdateWorldTransformRecursive(Entity entity)
+    private void UpdateWorldTransformRecursive(Entity entity, TransformComponent? local = null)
     {
         var parent = entity.Parent;
         var parentPosition = new Vector2();
@@ -78,16 +83,22 @@ public class TransformUpdaterBehaviour : IEntityBehaviour
             parentRotation = parentWorld.Rotation;
         }
 
-        if (!entity.TryGetComponent<TransformComponent>(out var local))
+        TransformComponent localTransform;
+        if (local == null)
         {
-            throw new Exception("Entity has no TransformComponent");
+            if (!entity.TryGetComponent(out localTransform))
+                throw new Exception("Entity has no TransformComponent");
+        }
+        else
+        {
+            localTransform = local.Value;
         }
 
-        entity.ApplyComponent(new WorldTransformComponent
+        entity.ApplyComponentSilently(new WorldTransformComponent
         {
-            Position = parentPosition + local.Position,
-            Scale = parentScale * local.Scale,
-            Rotation = parentRotation + local.Rotation,
+            Position = parentPosition + localTransform.Position,
+            Scale = parentScale * localTransform.Scale,
+            Rotation = parentRotation + localTransform.Rotation,
         });
 
         foreach (var child in entity.Children)

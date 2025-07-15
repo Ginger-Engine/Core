@@ -1,12 +1,13 @@
 ﻿namespace Engine.Core.Scenes.Loader.Info;
 
-public record struct EntityInfo()
+public class EntityInfo()
 {
-
+    public Guid Id = Guid.Empty;
     public string Name = string.Empty;
     public List<ComponentInfo> Components = [];
     public List<string> Behaviours = [];
     public List<EntityInfo> Children = [];
     public bool IsEnabled = false;
-    public Guid Id = Guid.Empty;
+    public string Prefab = string.Empty;
+    public Dictionary<string, object> Parameters = [];
 }

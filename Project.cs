@@ -14,8 +14,6 @@ public class Project
     private DiContainer? _container;
     private ProjectConfig _config;
     public DiContainer Container => _container ?? throw new InvalidOperationException("Project not initialized");
-    
-    private ProjectState _state = new();
 
     public void RegisterBundle(IBundle bundle)
     {

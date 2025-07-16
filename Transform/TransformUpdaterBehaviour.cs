@@ -1,107 +1,77 @@
-﻿using System.Numerics;
-using Engine.Core.Behaviours;
+﻿using Engine.Core.Behaviours;
 using Engine.Core.Entities;
 
 namespace Engine.Core.Transform;
 
 public class TransformUpdaterBehaviour : IEntityBehaviour
 {
-    public void OnAttach(Entity entity)
-    {
-        if (!entity.IsComponentExists<WorldTransformComponent>())
-        {
-            entity.AddComponent(new WorldTransformComponent());
-        }
-    }
-
     public void OnStart(Entity entity)
     {
-        UpdateWorldTransformRecursive(entity);
-        entity.SubscribeComponentChange<TransformComponent>((newValue, _) =>
+        entity.SubscribeComponentChangeImmediately<TransformComponent>(e =>
         {
-            UpdateWorldTransformRecursive(entity, newValue);
+            var newValue = e.newValue;
+            var oldValue = e.oldValue;
+
+            if (!Equals(newValue.Transform, oldValue.Transform))
+            {
+                var offset = newValue.Transform - oldValue.Transform;
+                entity.ModifySilently((ref TransformComponent transform) =>
+                {
+                    transform.WorldTransform += offset;
+                });
+
+                foreach (var entityChild in entity.Children)
+                {
+                    entityChild.Modify((ref TransformComponent transform) =>
+                    {
+                        transform.WorldTransform += offset;
+                    });
+                }
+                
+                return;
+            }
+            
+            if (!Equals(newValue.WorldTransform, oldValue.WorldTransform))
+            {
+                var offset = newValue.WorldTransform - oldValue.WorldTransform;
+                entity.ModifySilently((ref TransformComponent transform) =>
+                {
+                    transform.Transform += offset;
+                });
+
+                foreach (var entityChild in entity.Children)
+                {
+                    entityChild.Modify((ref TransformComponent transform) =>
+                    {
+                        transform.Transform += offset;
+                    });
+                }
+            }
         });
-        entity.SubscribeComponentChange<WorldTransformComponent>((newValue, _) =>
-        {
-            UpdateTransformRecursive(entity, newValue);
-        });
+        InitTransformSilently(entity);
     }
     
-    private void UpdateTransformRecursive(Entity entity, WorldTransformComponent? world = null)
+    private static void InitTransformSilently(Entity entity)
     {
         var parent = entity.Parent;
         if (parent == null)
-            return;
-
-        if (!parent.TryGetComponent<WorldTransformComponent>(out var parentWorld))
-            throw new Exception("Parent entity has no WorldTransformComponent");
-        
-        WorldTransformComponent worldTransform;
-        if (world == null)
         {
-            if (!entity.TryGetComponent(out worldTransform))
-                throw new Exception("Entity has no TransformComponent");
-        }
-        else
-        {
-            worldTransform = world.Value;
-        }
-        
-        // Вычисляем локальную позицию на основе world и родителя
-        var newLocalPosition = worldTransform.Position - parentWorld.Position;
-        var newLocalScale = new Vector2(
-            worldTransform.Scale.X / parentWorld.Scale.X,
-            worldTransform.Scale.Y / parentWorld.Scale.Y
-        );
-        var newLocalRotation = worldTransform.Rotation - parentWorld.Rotation;
-
-        entity.ApplyComponentSilently(new TransformComponent
-        {
-            Position = newLocalPosition,
-            Scale = newLocalScale,
-            Rotation = newLocalRotation
-        });
-
-        foreach (var child in entity.Children)
-            UpdateTransformRecursive(child);
-    }
-
-    private void UpdateWorldTransformRecursive(Entity entity, TransformComponent? local = null)
-    {
-        var parent = entity.Parent;
-        var parentPosition = new Vector2();
-        var parentScale = new Vector2(1, 1);
-        var parentRotation = 0f;
-        if (parent != null)
-        {
-            if (!parent.TryGetComponent<WorldTransformComponent>(out var parentWorld))
+            entity.ModifySilently((ref TransformComponent transformComponent) =>
             {
-                throw new Exception("Parent entity has no WorldTransformComponent");
-            }
-            parentPosition = parentWorld.Position;
-            parentScale = parentWorld.Scale;
-            parentRotation = parentWorld.Rotation;
+                transformComponent.WorldTransform = transformComponent.Transform;
+            });
+            return;
         }
-
-        TransformComponent localTransform;
-        if (local == null)
+        
+        var parentWorldTransform = parent.GetComponent<TransformComponent>().WorldTransform;
+        entity.ModifySilently((ref TransformComponent transformComponent) =>
         {
-            if (!entity.TryGetComponent(out localTransform))
-                throw new Exception("Entity has no TransformComponent");
-        }
-        else
-        {
-            localTransform = local.Value;
-        }
-
-        entity.ApplyComponentSilently(new WorldTransformComponent
-        {
-            Position = parentPosition + localTransform.Position,
-            Scale = parentScale * localTransform.Scale,
-            Rotation = parentRotation + localTransform.Rotation,
+            transformComponent.WorldTransform = new Transform
+            {
+                Position = parentWorldTransform.Position + transformComponent.Transform.Position,
+                Rotation = parentWorldTransform.Rotation + transformComponent.Transform.Rotation,
+                Scale = parentWorldTransform.Scale * transformComponent.Transform.Scale
+            };
         });
-
-        foreach (var child in entity.Children)
-            UpdateWorldTransformRecursive(child);
     }
 }

@@ -20,6 +20,7 @@ public class CoreBundle : IBundle
         builder.Bind<SceneManager>();
         builder.Bind<ITypeResolver<Entity>>().From<EntityTypeResolver>();
         builder.Bind<ITypeResolver<Vector2>>().From<Vector2TypeResolver>();
+        builder.Bind<ITypeResolver<Transform.Transform>>().From<TransformTypeResolver>();
         builder.Bind<TypeResolverRegistry>().AfterInit((registryObj, container) =>
         {
             var resolvers = container.ResolveAll(typeof(ITypeResolver<>));

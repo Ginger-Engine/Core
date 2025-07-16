@@ -2,14 +2,21 @@ namespace Engine.Core.Entities;
 
 public class ComponentChangeSubscription<T> : IDisposable where T: IComponent
 {
-    private readonly Entities.Entity _entity;
-    private readonly Entities.Entity.ChangeComponentEvent<T> _action;
+    private readonly Entity _entity;
+    private readonly Entity.ChangeComponentEventDelegate<T> _action;
 
-    public ComponentChangeSubscription(Entities.Entity entity, Entities.Entity.ChangeComponentEvent<T> action)
+    public ComponentChangeSubscription(Entity entity, Entity.ChangeComponentEventDelegate<T> action, bool immediately = false)
     {
         _entity = entity;
         _action = action;
-        _entity.AddComponentChangeHandler(_action);
+        if (immediately)
+        {
+            _entity.AddComponentChangeHandlerImmediately(_action);
+        }
+        else
+        {
+            _entity.AddComponentChangeHandler(_action);
+        }
     }
 
     public void Dispose()

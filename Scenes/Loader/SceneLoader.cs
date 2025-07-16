@@ -57,16 +57,44 @@ public class SceneLoader
     {
         foreach (var component in entity.Components)
         {
-            var keys = component.Parameters.Keys.ToList();
-            foreach (var key in keys)
-            {
-                if (component.Parameters[key] is string s && s.StartsWith('$'))
+            component.Parameters = (Dictionary<string, object>)ReplaceParameters(component.Parameters, parameters);
+        }
+    }
+
+    private object ReplaceParameters(object? node, Dictionary<string, object> parameters)
+    {
+        switch (node)
+        {
+            case string s when s.StartsWith('$'):
+                var key = s.Substring(1);
+                return parameters.TryGetValue(key, out var value) ? value : s;
+
+            case Dictionary<object, object> dict:
+                var replacedDict = new Dictionary<object, object>();
+                foreach (var kvp in dict)
                 {
-                    var paramKey = s[1..];
-                    if (parameters.TryGetValue(paramKey, out var value))
-                        component.Parameters[key] = value;
+                    replacedDict[kvp.Key] = ReplaceParameters(kvp.Value, parameters);
                 }
-            }
+                return replacedDict;
+
+            case Dictionary<string, object> dictString:
+                var replacedDictStr = new Dictionary<string, object>();
+                foreach (var kvp in dictString)
+                {
+                    replacedDictStr[kvp.Key] = ReplaceParameters(kvp.Value, parameters);
+                }
+                return replacedDictStr;
+
+            case List<object> list:
+                var replacedList = new List<object>();
+                foreach (var item in list)
+                {
+                    replacedList.Add(ReplaceParameters(item, parameters));
+                }
+                return replacedList;
+
+            default:
+                return node!;
         }
     }
 }

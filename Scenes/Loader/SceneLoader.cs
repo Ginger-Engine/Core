@@ -38,7 +38,7 @@ public class SceneLoader
         {
             var prefabPath = entity.Prefab;
             var prefab = Load(prefabPath);
-            ApplyParameters(prefab, mergedParams);
+            ApplyParametersRecursive(prefab, mergedParams);
 
             entity.Components = prefab.Components;
             entity.Behaviours = prefab.Behaviours;
@@ -61,6 +61,16 @@ public class SceneLoader
         }
     }
 
+    private void ApplyParametersRecursive(EntityInfo entity, Dictionary<string, object> parameters)
+    {
+        ApplyParameters(entity, parameters);
+
+        foreach (var child in entity.Children)
+        {
+            ApplyParametersRecursive(child, parameters);
+        }
+    }
+    
     private object ReplaceParameters(object? node, Dictionary<string, object> parameters)
     {
         switch (node)

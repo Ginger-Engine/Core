@@ -250,11 +250,14 @@ public class Entity(Guid id = default)
             value();
         }
     }
-
     
-
     public IDisposable SubscribeComponentChangeImmediately<T>(ChangeComponentEventDelegate<T> action) where T : IComponent
     {
         return new ComponentChangeSubscription<T>(this, action);
+    }
+
+    public override string ToString()
+    {
+        return $"{Id} ({Name})";
     }
 }

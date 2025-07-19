@@ -25,7 +25,7 @@ public class SceneLoader
         root.Parameters = parameters ?? [];
 
         // Этап 1: разрешение всех префабов и слотов
-        ResolveAllPrefabsAndSlots(root);
+        ResolveAllPrefabsAndSlots(root, root.Slots);
 
         // Этап 2: применение параметров
         ApplyParametersRecursive(root, root.Parameters ?? []);
@@ -33,7 +33,7 @@ public class SceneLoader
         return root;
     }
 
-    private void ResolveAllPrefabsAndSlots(EntityInfo entity)
+    private void ResolveAllPrefabsAndSlots(EntityInfo entity, Dictionary<string, List<EntityInfo>> parentSlots)
     {
         // Префабы могут быть вложенными: A -> B -> C
         while (!string.IsNullOrWhiteSpace(entity.Prefab))
@@ -47,6 +47,10 @@ public class SceneLoader
             entity.Behaviours = prefab.Behaviours;
             entity.Children = prefab.Children;
             entity.Slots = new Dictionary<string, List<EntityInfo>>(prefab.Slots);
+            foreach (var (key, value) in parentSlots)
+            {
+                entity.Slots.Add(key, new List<EntityInfo>(value));
+            }
             entity.Prefab = prefab.Prefab;
 
             // Поверх префабных слотов накладываем внешние
@@ -59,7 +63,7 @@ public class SceneLoader
 
         // Обработка слотов
         var newChildren = new List<EntityInfo>();
-        foreach (var child in entity.Children)
+        foreach (var child in entity.Children ?? [])
         {
             if (!string.IsNullOrEmpty(child.Slot))
             {
@@ -67,7 +71,15 @@ public class SceneLoader
                 {
                     foreach (var slotItem in slotContent)
                     {
-                        ResolveAllPrefabsAndSlots(slotItem);
+                        ResolveAllPrefabsAndSlots(slotItem, entity.Slots);
+                        newChildren.Add(slotItem);
+                    }
+                }
+                if (parentSlots.TryGetValue(child.Slot, out var parentSlotContent))
+                {
+                    foreach (var slotItem in parentSlotContent)
+                    {
+                        ResolveAllPrefabsAndSlots(slotItem, entity.Slots);
                         newChildren.Add(slotItem);
                     }
                 }
@@ -75,7 +87,7 @@ public class SceneLoader
             }
             else
             {
-                ResolveAllPrefabsAndSlots(child);
+                ResolveAllPrefabsAndSlots(child, entity.Slots);
                 newChildren.Add(child);
             }
         }

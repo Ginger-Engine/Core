@@ -15,42 +15,94 @@ public class SceneLoader
             .Build();
     }
 
-    public EntityInfo Load(string path)
+    public EntityInfo Load(string path, Dictionary<string, object>? parameters = null)
     {
         if (!File.Exists(path))
             throw new FileNotFoundException($"Scene file not found: {path}");
 
         var yaml = File.ReadAllText(path);
         var root = _deserializer.Deserialize<EntityInfo>(yaml);
-        ResolvePrefabsRecursive(root, new Dictionary<string, object>());
+        root.Parameters = parameters ?? [];
+
+        // Этап 1: разрешение всех префабов и слотов
+        ResolveAllPrefabsAndSlots(root);
+
+        // Этап 2: применение параметров
+        ApplyParametersRecursive(root, root.Parameters ?? []);
+
         return root;
     }
 
-    private void ResolvePrefabsRecursive(EntityInfo entity, Dictionary<string, object> inheritedParameters)
+    private void ResolveAllPrefabsAndSlots(EntityInfo entity)
     {
-        // Merge parameters from parent and current entity
-        var currentParams = entity.Parameters ?? [];
-        var mergedParams = new Dictionary<string, object>(inheritedParameters);
-        foreach (var kv in currentParams)
-            mergedParams[kv.Key] = kv.Value;
-
-        if (!string.IsNullOrWhiteSpace(entity.Prefab))
+        // Префабы могут быть вложенными: A -> B -> C
+        while (!string.IsNullOrWhiteSpace(entity.Prefab))
         {
-            var prefabPath = entity.Prefab;
-            var prefab = Load(prefabPath);
-            ApplyParametersRecursive(prefab, mergedParams);
+            var prefab = LoadPrefabOnly(entity.Prefab);
+
+            var externalSlots = entity.Slots ?? [];
+            var externalParameters = entity.Parameters ?? [];
 
             entity.Components = prefab.Components;
             entity.Behaviours = prefab.Behaviours;
             entity.Children = prefab.Children;
-            entity.Prefab = null;
-            entity.Parameters = null;
+            entity.Slots = new Dictionary<string, List<EntityInfo>>(prefab.Slots);
+            entity.Prefab = prefab.Prefab;
+
+            // Поверх префабных слотов накладываем внешние
+            foreach (var kv in externalSlots)
+                entity.Slots[kv.Key] = kv.Value;
+
+            if (entity.Parameters == null)
+                entity.Parameters = externalParameters;
         }
 
+        // Обработка слотов
+        var newChildren = new List<EntityInfo>();
         foreach (var child in entity.Children)
         {
-            ResolvePrefabsRecursive(child, mergedParams);
+            if (!string.IsNullOrEmpty(child.Slot))
+            {
+                if (entity.Slots.TryGetValue(child.Slot, out var slotContent))
+                {
+                    foreach (var slotItem in slotContent)
+                    {
+                        ResolveAllPrefabsAndSlots(slotItem);
+                        newChildren.Add(slotItem);
+                    }
+                }
+                // иначе пропускаем слот
+            }
+            else
+            {
+                ResolveAllPrefabsAndSlots(child);
+                newChildren.Add(child);
+            }
         }
+
+        entity.Children = newChildren;
+    }
+
+    private EntityInfo LoadPrefabOnly(string path)
+    {
+        if (!File.Exists(path))
+            throw new FileNotFoundException($"Prefab not found: {path}");
+
+        var yaml = File.ReadAllText(path);
+        return _deserializer.Deserialize<EntityInfo>(yaml);
+    }
+
+    private void ApplyParametersRecursive(EntityInfo entity, Dictionary<string, object> inherited)
+    {
+        var current = entity.Parameters ?? [];
+        var merged = new Dictionary<string, object>(inherited);
+        foreach (var kv in current)
+            merged[kv.Key] = kv.Value;
+
+        ApplyParameters(entity, merged);
+
+        foreach (var child in entity.Children)
+            ApplyParametersRecursive(child, merged);
     }
 
     private void ApplyParameters(EntityInfo entity, Dictionary<string, object> parameters)
@@ -61,50 +113,63 @@ public class SceneLoader
         }
     }
 
-    private void ApplyParametersRecursive(EntityInfo entity, Dictionary<string, object> parameters)
-    {
-        ApplyParameters(entity, parameters);
-
-        foreach (var child in entity.Children)
-        {
-            ApplyParametersRecursive(child, parameters);
-        }
-    }
-    
     private object ReplaceParameters(object? node, Dictionary<string, object> parameters)
+    {
+        var result = ReplaceParametersInternal(node, parameters);
+        return NormalizeTypes(result);
+    }
+
+    private object ReplaceParametersInternal(object? node, Dictionary<string, object> parameters)
     {
         switch (node)
         {
-            case string s when s.StartsWith('$'):
-                var key = s.Substring(1);
-                return parameters.TryGetValue(key, out var value) ? value : s;
+            case string s:
+                return ResolveStringParameter(s, parameters);
 
             case Dictionary<object, object> dict:
-                var replacedDict = new Dictionary<object, object>();
-                foreach (var kvp in dict)
-                {
-                    replacedDict[kvp.Key] = ReplaceParameters(kvp.Value, parameters);
-                }
-                return replacedDict;
+                return dict.ToDictionary(kvp => kvp.Key, kvp => ReplaceParametersInternal(kvp.Value, parameters));
 
-            case Dictionary<string, object> dictString:
-                var replacedDictStr = new Dictionary<string, object>();
-                foreach (var kvp in dictString)
-                {
-                    replacedDictStr[kvp.Key] = ReplaceParameters(kvp.Value, parameters);
-                }
-                return replacedDictStr;
+            case Dictionary<string, object> dictStr:
+                return dictStr.ToDictionary(kvp => kvp.Key, kvp => ReplaceParametersInternal(kvp.Value, parameters));
 
             case List<object> list:
-                var replacedList = new List<object>();
-                foreach (var item in list)
-                {
-                    replacedList.Add(ReplaceParameters(item, parameters));
-                }
-                return replacedList;
+                return list.Select(item => ReplaceParametersInternal(item, parameters)).ToList();
 
             default:
                 return node!;
         }
+    }
+
+    private object ResolveStringParameter(string input, Dictionary<string, object> parameters)
+    {
+        string result = input;
+        int safety = 10; // предотвратить бесконечный цикл
+
+        while (result.StartsWith('$') && safety-- > 0)
+        {
+            var key = result[1..];
+            if (parameters.TryGetValue(key, out var value))
+            {
+                if (value is string strValue)
+                    result = strValue;
+                else
+                    return value;
+            }
+            else break;
+        }
+
+        return result;
+    }
+
+
+    private object NormalizeTypes(object node)
+    {
+        return node switch
+        {
+            Dictionary<object, object> dict => dict.ToDictionary(kvp => kvp.Key.ToString() ?? "", kvp => NormalizeTypes(kvp.Value)),
+            Dictionary<string, object> dictStr => dictStr.ToDictionary(kvp => kvp.Key, kvp => NormalizeTypes(kvp.Value)),
+            List<object> list => list.Select(NormalizeTypes).ToList(),
+            _ => node
+        };
     }
 }

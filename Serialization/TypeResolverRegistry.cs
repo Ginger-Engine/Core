@@ -57,7 +57,7 @@ public class TypeResolverRegistry
     {
         if (typeResolver == null && IsScalarType(type))
         {
-            return ConvertScalar((string)raw, type);
+            return ConvertScalar(raw.ToString(), type);
         }
         
         if (typeResolver != null)

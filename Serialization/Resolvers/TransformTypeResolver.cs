@@ -6,11 +6,11 @@ public class TransformTypeResolver(Vector2TypeResolver vector2TypeResolver) : IT
 {
     public object? Resolve(Type type, object raw)
     {
-        var dict = raw as Dictionary<object, object>;
+        var dict = raw as Dictionary<string, object>;
         return new Transform.Transform
         {
             Position = (Vector2)vector2TypeResolver.Resolve(typeof(Vector2), dict["Position"]),
-            Rotation = float.Parse((string)dict["Rotation"]),
+            Rotation = float.Parse(dict["Rotation"].ToString()),
             Scale =    (Vector2)vector2TypeResolver.Resolve(typeof(Vector2), dict["Scale"]),
         };
     }

@@ -10,4 +10,6 @@ public class EntityInfo()
     public bool IsEnabled = false;
     public string Prefab = string.Empty;
     public Dictionary<string, object> Parameters = [];
+    public Dictionary<string, List<EntityInfo>> Slots = [];
+    public string Slot = string.Empty;
 }

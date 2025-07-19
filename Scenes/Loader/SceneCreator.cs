@@ -86,7 +86,7 @@ public class SceneCreator
         return scene;
     }
 
-    private Entity CreateEntity(EntityInfo info)
+    public Entity CreateEntity(EntityInfo info)
     {
         var entity = new Entity(info.Id)
         {

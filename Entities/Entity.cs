@@ -83,6 +83,42 @@ public class Entity(Guid id = default)
         });
     }
 
+    public void ApplyComponent(object component)
+    {
+        var componentType = component.GetType();
+        if (!_components.TryGetValue(componentType, out var old))
+            throw new InvalidOperationException($"Component {componentType.Name} not found before applying");
+        _components[componentType] = component as IComponent;
+        
+        OnComponentChangedImmediately(component as IComponent, old, new Context
+        {
+            Entity = this,
+            Frame = new StackTrace(skipFrames: 1, fNeedFileInfo: true).GetFrame(0),
+        });
+        
+        if (!_pendingNotifications.ContainsKey(componentType))
+        {
+            var trace = new StackTrace(skipFrames: 1, fNeedFileInfo: true);
+            // WriteStacktrace(trace, componentType);
+            _pendingNotifications.Add(componentType, () => OnComponentChanged(component as IComponent, old, new Context
+            {
+                Entity = this,
+                Frame = new StackTrace(skipFrames: 1, fNeedFileInfo: true).GetFrame(0),
+            }));
+        }
+    }
+
+    public void AddOrApplyComponent(object component)
+    {
+        if (!_components.ContainsKey(component.GetType()))
+        {
+            _components.Add(component.GetType(), component as IComponent);
+            return;
+        }
+        
+        _components[component.GetType()] = component as IComponent;
+    }
+
     private void ApplyComponent<T>(T component, Context context) where T : struct, IComponent
     {
         var componentType = typeof(T);

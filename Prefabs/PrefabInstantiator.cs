@@ -62,11 +62,10 @@ public class PrefabInstantiator
 
         cloneMap[original] = clone;
 
-        // Добавляем компоненты через AddComponent<T>, чтобы корректно сработал OnAddToEntity
-        foreach (var component in original.Components.Values)
+        foreach (var (_, component) in original.Components)
         {
-            // runtime-generic вызов, сохраним тип компонента
-            clone.AddComponent((dynamic)component);
+            if (component is IComponent ic)
+                clone.AddOrApplyComponent(ic);
         }
 
         foreach (var child in original.Children)

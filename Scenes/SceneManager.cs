@@ -1,12 +1,11 @@
-﻿using System.Collections;
-using Engine.Core.Behaviours;
+﻿using Engine.Core.Behaviours;
 using Engine.Core.Entities;
 
 namespace Engine.Core.Scenes;
 
 public class SceneManager(EntityBehaviourManager behaviourManager)
 {
-    private Queue<Entity> _entitiesToAdd = [];
+    private readonly Queue<Entity> _entitiesToAdd = [];
     public Scene? CurrentScene => _currentScene;
     private Scene? _currentScene;
 
@@ -18,9 +17,6 @@ public class SceneManager(EntityBehaviourManager behaviourManager)
     public void UpdateCurrentScene(float dt)
     {
         if (_currentScene == null) throw new InvalidOperationException("Scene is not set");
-        
-        foreach (var sb in _currentScene.SceneBehaviours)
-            sb.Value.OnUpdate(dt);
         
         UpdateEntities(_currentScene.Entities.All.Values, dt);
     }

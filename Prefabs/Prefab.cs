@@ -6,11 +6,11 @@ namespace Engine.Core.Prefabs;
 public class Prefab
 {
     public Entity RootEntity { get; }
-    public List<IEntityBehaviour> Behaviours { get; }
+    public Dictionary<Entity, List<IEntityBehaviour>> BehavioursByEntity { get; }
 
-    public Prefab(Entity rootEntity, List<IEntityBehaviour> behaviours)
+    public Prefab(Entity rootEntity, Dictionary<Entity, List<IEntityBehaviour>> behavioursByEntity)
     {
         RootEntity = rootEntity;
-        Behaviours = behaviours;
+        BehavioursByEntity = behavioursByEntity;
     }
 }

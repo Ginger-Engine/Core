@@ -17,36 +17,42 @@ public class PrefabInstantiator
         _behaviourManager = behaviourManager;
     }
 
-    // Загружает префаб и возвращает его как Prefab (Entity + Behaviours)
     public Prefab Load(string prefabPath, Dictionary<string, object>? parameters = null)
     {
         var entityInfo = _loader.Load(prefabPath, parameters);
         var rootEntity = _creator.CreateEntity(entityInfo);
-        return new Prefab(rootEntity, _behaviourManager.GetBehaviours(rootEntity).ToList());
+        var behaviours = _behaviourManager.GetBehavioursRecursive(rootEntity);
+        return new Prefab(rootEntity, behaviours);
     }
 
-    // Инстанцирует Prefab (клонирует + применяет override-компоненты + возвращает новую сущность)
     public Entity Instantiate(Prefab prefab, IEnumerable<IComponent>? overrideComponents = null)
     {
-        var clone = DeepCloneEntity(prefab.RootEntity);
-
-        if (overrideComponents != null)
+        // Сопоставим оригинальные сущности с их клонами
+        var cloneMap = new Dictionary<Entity, Entity>();
+        var clone = DeepCloneEntity(prefab.RootEntity, cloneMap);
+        foreach (var component in overrideComponents ?? [])
         {
-            foreach (var component in overrideComponents)
-            {
-                clone.AddOrApplyComponent(component);
-            }
+            clone.AddOrApplyComponent(component);
         }
-        
-        foreach (var behaviour in prefab.Behaviours)
+
+        // Назначаем поведения из prefab.Behaviours на соответствующие клоны
+        foreach (var (originalEntity, behaviours) in prefab.BehavioursByEntity)
         {
-            _behaviourManager.AttachBehaviour(clone, behaviour);
+            if (cloneMap.TryGetValue(originalEntity, out var clonedEntity))
+            {
+                foreach (var behaviour in behaviours)
+                {
+                    _behaviourManager.AttachBehaviour(clonedEntity, behaviour);
+                    _behaviourManager.Start(clonedEntity);
+                }
+            }
         }
 
         return clone;
     }
 
-    private Entity DeepCloneEntity(Entity original)
+
+    private Entity DeepCloneEntity(Entity original, Dictionary<Entity, Entity> cloneMap)
     {
         var clone = new Entity
         {
@@ -54,15 +60,18 @@ public class PrefabInstantiator
             IsEnabled = original.IsEnabled
         };
 
-        foreach (var (type, component) in original.Components)
+        cloneMap[original] = clone;
+
+        // Добавляем компоненты через AddComponent<T>, чтобы корректно сработал OnAddToEntity
+        foreach (var component in original.Components.Values)
         {
-            if (component is not IComponent) continue;
-            clone.AddOrApplyComponent(component);
+            // runtime-generic вызов, сохраним тип компонента
+            clone.AddComponent((dynamic)component);
         }
 
         foreach (var child in original.Children)
         {
-            var childClone = DeepCloneEntity(child);
+            var childClone = DeepCloneEntity(child, cloneMap);
             childClone.Parent = clone;
             clone.Children.Add(childClone);
         }

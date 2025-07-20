@@ -57,4 +57,22 @@ public class EntityBehaviourManager(DiContainer container)
                 behaviour.OnUpdate(entity, dt);
         }
     }
+
+    public Dictionary<Entity, List<IEntityBehaviour>> GetBehavioursRecursive(Entity rootEntity)
+    {
+        var result = new Dictionary<Entity, List<IEntityBehaviour>>();
+
+        void Traverse(Entity entity)
+        {
+            var behaviours = GetBehaviours(entity).ToList();
+            if (behaviours.Count > 0)
+                result[entity] = behaviours;
+
+            foreach (var child in entity.Children)
+                Traverse(child);
+        }
+
+        Traverse(rootEntity);
+        return result;
+    }
 }

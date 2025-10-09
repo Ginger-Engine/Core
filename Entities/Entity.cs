@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using Engine.Core.Behaviours;
 
 namespace Engine.Core.Entities;
 
@@ -7,8 +8,8 @@ public class Entity(Guid id = default)
     private readonly Dictionary<Type, Action> _pendingNotifications = new();
     public readonly Guid Id = id == Guid.Empty ? Guid.NewGuid() : id;
     public required string Name;
-    public Entity? Parent;
-    public List<Entity> Children = [];
+    public Entity? Parent { get; internal set; }
+    public readonly List<Entity> Children = [];
     public bool IsEnabled = true;
 
     public IReadOnlyDictionary<Type, IComponent> Components => _components;

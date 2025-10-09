@@ -4,6 +4,13 @@ public class EntityCollection
 {
     private readonly Dictionary<Guid, Entity> _entities = new();
     public IReadOnlyDictionary<Guid, Entity> All => _entities;
+    public Entity RootEntity;
+
+    public EntityCollection(Entity rootEntity)
+    {
+        RootEntity = rootEntity;
+        Add(rootEntity);
+    }
 
     public void Add(Entity entity)
     {
@@ -14,7 +21,6 @@ public class EntityCollection
         foreach (var entityChild in children)
         {
             Add(entityChild);
-            entity.Children.Add(entityChild);
         }
     }
 
@@ -39,5 +45,10 @@ public class EntityCollection
     public void Clear()
     {
         _entities.Clear();
+    }
+
+    public bool Has(Entity entity)
+    {
+        return _entities.ContainsKey(entity.Id);
     }
 }

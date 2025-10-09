@@ -1,6 +1,5 @@
 ﻿using System.Reflection;
 using Engine.Core.Helper;
-using Engine.Core.Scenes;
 using Engine.Core.Scenes.Loader;
 using GignerEngine.DiContainer;
 using YamlDotNet.Serialization;
@@ -10,8 +9,8 @@ namespace Engine.Core;
 
 public class Project
 {
-    private readonly List<IBundle> _bundles = new();
-    private DiContainer? _container;
+    private readonly List<IBundle> _bundles = [];
+    private DiContainer _container = new();
     private ProjectConfig _config;
     public DiContainer Container => _container ?? throw new InvalidOperationException("Project not initialized");
 
@@ -19,8 +18,7 @@ public class Project
     {
         _bundles.Add(bundle);
     }
-
-
+    
     private static bool TryGetConfig(string name, out string yaml)
     {
         var filename = PathHelper.Normalize("resources/config/" + name + ".yaml");
@@ -44,7 +42,6 @@ public class Project
             bundle.InstallBindings(builder);
         }
         
-        _container = new DiContainer();
         builder.Bind<DiContainer>().FromInstance(_container);
         _container.Apply(builder);
         _container.Init();
@@ -59,16 +56,15 @@ public class Project
         
         var loader = _container.Resolve<SceneLoader>();
         var creator = _container.Resolve<SceneCreator>();
-        var sceneManager = _container.Resolve<SceneManager>();
+        var world = _container.Resolve<World>();
         var sceneInfo = loader.Load(_config.InitialScene);
         var scene = creator.Create(sceneInfo);
-        sceneManager.SetCurrentScene(scene);
+        
+        world.UseScene(scene);
     }
 
     public void Run()
     {
-        var sceneManager = _container.Resolve<SceneManager>();
-        sceneManager.StartCurrentScene();
         var loop = _container.Resolve<Loop>();
         while (loop.IsRunning())
         {

@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using Engine.Core.Behaviours;
 using Engine.Core.Entities;
+using Engine.Core.Exceptions;
 using Engine.Core.Scenes.Loader.Info;
 using Engine.Core.Serialization;
 using GignerEngine.DiContainer;
@@ -11,29 +12,36 @@ public class SceneCreator
 {
     private readonly DiContainer _container;
     private readonly TypeResolverRegistry _resolvers;
-    private readonly EntityBehaviourManager _behaviourManager;
-    private readonly SceneLoader _sceneLoader;
+    private readonly World _world;
 
     public SceneCreator(
         DiContainer container,
         TypeResolverRegistry resolvers,
-        EntityBehaviourManager behaviourManager,
-        SceneLoader sceneLoader)
+        World world)
     {
         _container = container;
         _resolvers = resolvers;
-        _behaviourManager = behaviourManager;
-        _sceneLoader = sceneLoader;
+        _world = world;
     }
 
-    public Scene Create(EntityInfo sceneInfo)
+    public Prefab Create(EntityInfo sceneInfo)
     {
-        var scene = new Scene(_behaviourManager);
-
         var rootEntity = CreateEntity(sceneInfo);
-        scene.Entities.Add(rootEntity);
+        var entitiesCollection = new EntityCollection(rootEntity);
+        var scene = new Prefab(
+            entitiesCollection,
+            ResolveBehaviours(ExtractBehaviourInfos(sceneInfo), entitiesCollection)
+        );
+        // scene.Entities.Add(rootEntity);
 
-        foreach (var (_, entity) in scene.Entities.All)
+        ResolveEntityLinks(scene);
+
+        return scene;
+    }
+
+    private static void ResolveEntityLinks(Prefab prefab)
+    {
+        foreach (var (_, entity) in prefab.Entities.All)
         {
             foreach (var (type, component) in entity.Components)
             {
@@ -46,7 +54,7 @@ public class SceneCreator
                     {
                         if (field.GetValue(component) is Entity stub && stub.Id != Guid.Empty)
                         {
-                            if (scene.Entities.TryGet(stub.Id, out var realEntity))
+                            if (prefab.Entities.TryGet(stub.Id, out var realEntity))
                                 field.SetValue(component, realEntity);
                         }
                     }
@@ -57,7 +65,7 @@ public class SceneCreator
                         if (field.GetValue(component) is Entity[] stubs)
                         {
                             var resolved = stubs
-                                .Select(stub => scene.Entities.TryGet(stub.Id, out var realEntity) ? realEntity : null)
+                                .Select(stub => prefab.Entities.TryGet(stub.Id, out var realEntity) ? realEntity : null)
                                 .Where(e => e != null)
                                 .ToArray();
 
@@ -72,7 +80,7 @@ public class SceneCreator
                         if (field.GetValue(component) is List<Entity> stubs)
                         {
                             var resolved = stubs
-                                .Select(stub => scene.Entities.TryGet(stub.Id, out var realEntity) ? realEntity : null)
+                                .Select(stub => prefab.Entities.TryGet(stub.Id, out var realEntity) ? realEntity : null)
                                 .Where(e => e != null)
                                 .ToList();
 
@@ -82,8 +90,59 @@ public class SceneCreator
                 }
             }
         }
+    }
 
-        return scene;
+    public Dictionary<EntityInfo, HashSet<string>> ExtractBehaviourInfos(EntityInfo entityInfo,
+        Dictionary<EntityInfo, HashSet<string>>? result = null)
+    {
+        result ??= new Dictionary<EntityInfo, HashSet<string>>();
+        result.Add(entityInfo, []);
+        foreach (var entityInfoBehaviour in entityInfo.Behaviours)
+        {
+            result[entityInfo].Add(entityInfoBehaviour);
+        }
+
+        foreach (var entityInfoChild in entityInfo.Children)
+        {
+            ExtractBehaviourInfos(entityInfoChild, result);
+        }
+
+        return result;
+    }
+
+    public Dictionary<Type, HashSet<Entity>> ResolveBehaviours(
+        Dictionary<EntityInfo, HashSet<string>> behavioursMap, EntityCollection entityCollection)
+    {
+        var result = new Dictionary<Type, HashSet<Entity>>();
+
+        foreach (var (entityInfo, behaviours) in behavioursMap)
+        {
+            foreach (var behaviourName in behaviours)
+            {
+                var behaviour = ResolveBehaviour(behaviourName);
+                var behaviourType = behaviour.GetType();
+                if (!result.ContainsKey(behaviourType))
+                {
+                    result.Add(behaviourType, []);
+                } 
+
+                if (!entityCollection.TryGet(entityInfo.Id, out var entity))
+                {
+                    throw new EntityNotFoundException(entityInfo.Id);
+                }
+
+                result[behaviourType].Add(entity);
+            }
+        }
+
+        return result;
+    }
+
+    private IEntityBehaviour ResolveBehaviour(string behaviourName)
+    {
+        var type = ResolveType(behaviourName);
+        return _container.Resolve(type) as IEntityBehaviour
+               ?? throw new Exception($"Invalid entity behaviour: {behaviourName}");
     }
 
     public Entity CreateEntity(EntityInfo info)
@@ -106,14 +165,6 @@ public class SceneCreator
             }
 
             entity.AddComponent((dynamic)instance);
-        }
-
-        foreach (var behaviourName in info.Behaviours ?? [])
-        {
-            var type = ResolveType(behaviourName);
-            var behaviour = _container.Resolve(type) as IEntityBehaviour
-                            ?? throw new Exception($"Invalid entity behaviour: {behaviourName}");
-            _behaviourManager.AttachBehaviour(entity, behaviour);
         }
 
         foreach (var childInfo in info.Children)

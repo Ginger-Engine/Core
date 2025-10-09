@@ -16,8 +16,7 @@ public class CoreBundle : IBundle
     public void InstallBindings(DiBuilder builder)
     {
         builder.BindParameter("basePath", "./resources");
-        builder.Bind<EntityBehaviourManager>();
-        builder.Bind<SceneManager>();
+        builder.Bind<World>().AsSingle();
         builder.Bind<ITypeResolver<Entity>>().From<EntityTypeResolver>();
         builder.Bind<ITypeResolver<Vector2>>().From<Vector2TypeResolver>();
         builder.Bind<ITypeResolver<Transform.Transform>>().From<TransformTypeResolver>();

@@ -14,4 +14,8 @@
       <ProjectReference Include="..\DiContainer\DiContainer.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="Prefabs\" />
+    </ItemGroup>
+
 </Project>
